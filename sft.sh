@@ -6,9 +6,10 @@ conda activate  blip3o
 export HF_HOME=/root/hub_data
 export OUTPUT_FOLDER=output
 export IMG_FOLDER=/root/data
+export NUM_GPUS=1
 
 
-torchrun --nproc_per_node=1 \
+torchrun --nproc_per_node=${NUM_GPUS} \
     blip3o/train/train_mem.py \
     --deepspeed ./deepspeed_scripts/zero1.json \
     --model_name_or_path BLIP3o/BLIP3o-Model-4B \
