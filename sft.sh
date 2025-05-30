@@ -4,11 +4,11 @@ conda activate  blip3o
 
 
 export HF_HOME=/root/hub_data
-export OUTPUT_FOLDER=/Your/Model/Output/
+export OUTPUT_FOLDER=output
 export IMG_FOLDER=/root/data
 
 
-torchrun --nproc_per_node=8 \
+torchrun --nproc_per_node=1 \
     blip3o/train/train_mem.py \
     --deepspeed ./deepspeed_scripts/zero1.json \
     --model_name_or_path BLIP3o/BLIP3o-Model-4B \
@@ -23,7 +23,7 @@ torchrun --nproc_per_node=8 \
     --mm_use_im_patch_token False \
     --bf16 True \
     --output_dir ${OUTPUT_FOLDER} \
-    --num_train_epochs 1 \
+    --num_train_epochs 100 \
     --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
@@ -44,7 +44,8 @@ torchrun --nproc_per_node=8 \
     --gen_pooling early_pool2d_4 \
     --n_query 64 \
     --n_und_query 0 \
-    --report_to none \
+    --report_to tensorboard \
+    --logging_dir ${OUTPUT_FOLDER}/logs \
     --run_name blip3o_qwen_vl_sft
 
 
