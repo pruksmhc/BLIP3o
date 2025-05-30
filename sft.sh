@@ -3,16 +3,15 @@
 conda activate  blip3o
 
 
-export HF_HOME=/HF/Home/
+export HF_HOME=/root/hub_data
 export OUTPUT_FOLDER=/Your/Model/Output/
-export IMG_FOLDER=/Your/SFT/Image/Folder
-
+export IMG_FOLDER=/root/data
 
 
 torchrun --nproc_per_node=8 \
     blip3o/train/train_mem.py \
     --deepspeed ./deepspeed_scripts/zero1.json \
-    --model_name_or_path Your/Pretrain/Model  \
+    --model_name_or_path BLIP3o/BLIP3o-Model-4B \
     --version qwen \
     --data_type "mix" \
     --image_folder ${IMG_FOLDER} \
