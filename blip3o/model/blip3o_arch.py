@@ -93,8 +93,7 @@ class blip3oMetaModel:
             else:
                 gen_vision_tower = self.gen_vision_tower
             gen_vision_tower.load_model()
-
-
+        print(gen_vision_tower)
         self.config.use_mm_proj = True
         self.config.mm_projector_type = getattr(model_args, 'mm_projector_type', 'linear')
         # self.config.gen_projector_type = getattr(model_args, 'gen_projector_type', 'linear')
@@ -107,7 +106,7 @@ class blip3oMetaModel:
         self.config.mm_patch_merge_type = mm_patch_merge_type
         self.config.n_query = model_args.n_query
         self.config.gen_pooling = model_args.gen_pooling
-
+        print("CONFIG INSTANTIATE")
         # if getattr(self, 'mm_projector', None) is None:
         #     print("random initiation the mm_project !!!")
         #     self.mm_projector = build_vision_projector(self.config)
