@@ -73,14 +73,19 @@ class blip3oQwenForCausalLM(Qwen2_5_VLForConditionalGeneration, blip3oMetaForCau
         return_dict: Optional[bool] = None,
         cache_position: Optional[torch.LongTensor] = None
     ) -> Union[Tuple, CausalLMOutputWithPast]:
-
+        """
+        FUNCTION PARAMETERS ARE FROM _get_data from dataset in train.py
+        input_ids has last N as image tokens, first N are text tokens. 
+        """
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        
         if inputs_embeds is None:
+            # this part is in the code path
+            # input_embeds has both text and image ebmedding (from CLIP), passed into Qwen base. 
+            # input_embeds has the last N (from i_s_pos) as image tokens, tokens before thatare text tokens. 
             (
                 input_ids,
                 position_ids,
@@ -100,7 +105,7 @@ class blip3oQwenForCausalLM(Qwen2_5_VLForConditionalGeneration, blip3oMetaForCau
                 grid_thw,
                 i_s_pos,
                 image_sizes
-            )
+            ) # Encode
 
         outputs = self.model(
             input_ids=input_ids,
@@ -114,7 +119,7 @@ class blip3oQwenForCausalLM(Qwen2_5_VLForConditionalGeneration, blip3oMetaForCau
             return_dict=return_dict,
         )
         
-        hidden_states = outputs[0]
+        hidden_states = outputs[0] 
         logits = self.lm_head(hidden_states)
         logits = logits.float()
         
@@ -133,17 +138,20 @@ class blip3oQwenForCausalLM(Qwen2_5_VLForConditionalGeneration, blip3oMetaForCau
 
 
             # compute image loss
-            # target_img_embeds = torch.clone(inputs_embeds.detach())[:,1:,:] # get target image emb
-            img_loss_funct = torch.nn.MSELoss()
-            # img_hidden_states = self.get_model().down_projector(hidden_states[:,-self.get_n_query():,:])
+            # target_img_embeds = torch.clone(inputs_embeds.detach())[:,1:,:] # get target image emb            # img_hidden_states = self.get_model().down_projector(hidden_states[:,-self.get_n_query():,:])
             img_hidden_states = []
-            
+            """
+            Hidden state is the output of the Qwen-VL model. The image embedding is from i_s_pos to i_s_pos +64 seq length, 
+            which is used to initialize the diffusion model (passed through the caption projection) in lumina. 
+            """
             for b in range(hidden_states.shape[0]):
                 img_hidden_states.append(hidden_states[b,i_s_pos[b]:i_s_pos[b]+64,:])
             img_hidden_states = torch.stack(img_hidden_states,dim=0)
             img_hidden_states = self.get_model().down_projector(img_hidden_states)
+            # Step 3: Output of qwen base model is used to initialize the diffusion model. 
             # img_loss = 0.0
             if latents is None:
+                img_loss_funct = torch.nn.MSELoss()
                 img_loss = img_loss_funct(img_hidden_states, torch.clone(img_hidden_states.detach()))
             else:
                 bsz = latents.shape[0]
@@ -155,6 +163,7 @@ class blip3oQwenForCausalLM(Qwen2_5_VLForConditionalGeneration, blip3oMetaForCau
                 timesteps = self.get_model().noise_scheduler.timesteps[indices].to(device=latents.device)
                 sigmas = self.get_sigmas(timesteps, latents.device, n_dim=latents.ndim, dtype=dtype)
                 noisy_latents = (1.0 - sigmas) * latents + sigmas * noise
+                # we train the diffusion model.
                 noise_pred = self.get_model().dit(
                     x=noisy_latents,
                     timestep=timesteps,
